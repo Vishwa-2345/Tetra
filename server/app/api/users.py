@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_
 from typing import List, Optional
 import math
+import uuid
+import os
+import aiofiles
 
 from app.core.database import get_db
 from app.models.models import User, Job, Review
@@ -144,6 +147,41 @@ async def update_profile(
     
     await db.commit()
     await db.refresh(current_user)
+    
+    stats = await get_user_stats(db, current_user.id)
+    user_dict = {
+        **UserResponse.model_validate(current_user).model_dump(),
+        **stats
+    }
+    return UserResponse(**user_dict)
+
+@router.post("/profile/photo")
+async def upload_profile_photo(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+    
+    max_size = 5 * 1024 * 1024
+    contents = await file.read()
+    if len(contents) > max_size:
+        raise HTTPException(status_code=400, detail="File size exceeds 5MB limit")
+    
+    file_ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
+    unique_filename = f"profile_{current_user.id}_{uuid.uuid4()}{file_ext}"
+    file_path = os.path.join("uploads", unique_filename)
+    
+    async with aiofiles.open(file_path, 'wb') as f:
+        await f.write(contents)
+    
+    photo_url = f"/uploads/{unique_filename}"
+    current_user.profile_photo = photo_url
+    
+    await db.commit()
     
     stats = await get_user_stats(db, current_user.id)
     user_dict = {

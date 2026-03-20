@@ -124,7 +124,7 @@ interface ChatState {
   wsError: string | null;
   fetchConversations: () => Promise<void>;
   fetchMessages: (userId: number) => Promise<void>;
-  sendMessage: (receiverId: number, content: string, jobId?: number) => void;
+  sendMessage: (receiverId: number, content: string, jobId?: number, attachmentUrl?: string, attachmentType?: string) => void;
   connectWebSocket: () => void;
   disconnectWebSocket: (reason?: string) => void;
   setCurrentChat: (userId: number | null) => void;
@@ -170,7 +170,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: (receiverId, content, jobId) => {
+  sendMessage: (receiverId, content, jobId, attachmentUrl, attachmentType) => {
     const { ws, wsStatus } = get();
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     
@@ -178,7 +178,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     
     if (wsStatus !== 'connected' || !ws || ws.readyState !== WebSocket.OPEN) {
       console.warn('WebSocket not connected, sending via API');
-      messagesAPI.send({ receiver_id: receiverId, content, job_id: jobId })
+      messagesAPI.send({ 
+        receiver_id: receiverId, 
+        content, 
+        job_id: jobId,
+        attachment_url: attachmentUrl,
+        attachment_type: attachmentType
+      })
         .then((response) => {
           const { messages } = get();
           const newMessage = {
@@ -187,6 +193,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
             receiver_id: receiverId,
             content,
             job_id: jobId,
+            attachment_url: attachmentUrl,
+            attachment_type: attachmentType,
             created_at: response.data.created_at || new Date().toISOString(),
             is_read: false
           };
@@ -206,7 +214,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       type: 'message',
       receiver_id: receiverId,
       content,
-      job_id: jobId
+      job_id: jobId,
+      attachment_url: attachmentUrl,
+      attachment_type: attachmentType
     });
     ws.send(messageData);
     
@@ -217,6 +227,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       receiver_id: receiverId,
       content,
       job_id: jobId,
+      attachment_url: attachmentUrl,
+      attachment_type: attachmentType,
       created_at: new Date().toISOString(),
       is_temp: true
     };

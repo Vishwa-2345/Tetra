@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { jobsAPI } from '../../services/api'
 import toast from 'react-hot-toast'
-import { Briefcase, CheckCircle, DollarSign, Plus } from 'lucide-react'
+import { Briefcase, CheckCircle, DollarSign, Plus, Users } from 'lucide-react'
 import { Job } from '../../types'
 import { format } from 'date-fns'
 
@@ -40,36 +40,41 @@ export default function MyJobs() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">My Jobs</h1>
-          <p className="text-gray-500">Jobs you've posted</p>
-        </div>
-        <Link
-          to="/dashboard/create-job"
-          className="bg-primary-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium hover:bg-primary-600 transition-colors"
-        >
-          <Plus size={18} /> Post Job
-        </Link>
-      </div>
-
-      <div className="flex gap-2 flex-wrap">
-        {['all', 'pending', 'assigned', 'in_progress', 'completed', 'cancelled'].map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg text-sm capitalize transition-colors ${
-              filter === status
-                ? 'bg-primary-500 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100'
-            }`}
+    <div className="animate-fade-in">
+      {/* Sticky Glassmorphism Header */}
+      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-4 bg-white/70 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">My Jobs</h1>
+            <p className="text-gray-500">Jobs you've posted</p>
+          </div>
+          <Link
+            to="/dashboard/create-job"
+            className="bg-primary-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium hover:bg-primary-600 transition-colors"
           >
-            {status.replace('_', ' ')}
-          </button>
-        ))}
+            <Plus size={18} /> Post Job
+          </Link>
+        </div>
+
+        <div className="flex gap-2 flex-wrap">
+          {['all', 'pending', 'assigned', 'in_progress', 'completed', 'cancelled'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilter(status)}
+              className={`px-4 py-2 rounded-lg text-sm capitalize transition-colors ${
+                filter === status
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-white/80 backdrop-blur text-gray-600 hover:bg-gray-100/80'
+              }`}
+            >
+              {status.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Jobs List */}
+      <div className="space-y-4 mt-4">
       {loading ? (
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
@@ -118,6 +123,12 @@ export default function MyJobs() {
                         <span className="text-sm text-gray-500">{job.doer.name}</span>
                       </div>
                     )}
+                    {!job.doer && job.application_count !== undefined && job.application_count > 0 && (
+                      <div className="flex items-center gap-2 text-blue-600">
+                        <Users size={16} />
+                        <span className="text-sm font-medium">{job.application_count} applicant{job.application_count !== 1 ? 's' : ''}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-4 text-sm">
                     {job.advance_paid && (
@@ -147,6 +158,7 @@ export default function MyJobs() {
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }

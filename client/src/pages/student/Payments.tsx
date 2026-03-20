@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { paymentsAPI, jobsAPI } from '../../services/api'
+import { jobsAPI, paymentsAPI } from '../../services/api'
 import { WalletSummary, Job } from '../../types'
 import { DollarSign, TrendingUp, TrendingDown, Clock, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react'
 import { format } from 'date-fns'
@@ -45,18 +45,6 @@ export default function Payments() {
     }
   }
 
-  const handlePayFinal = async (jobId: number, amount: number) => {
-    try {
-      await paymentsAPI.payFinal(jobId)
-      setPaymentSuccessData({ amount, type: 'final' })
-      setShowPaymentSuccess(true)
-      fetchWallet()
-      fetchPendingJobs()
-    } catch (error: any) {
-      console.error('Failed to pay final')
-    }
-  }
-
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'advance': return 'text-blue-600'
@@ -70,9 +58,12 @@ export default function Payments() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Payments</h1>
-        <p className="text-gray-500">Manage your wallet and transactions</p>
+      {/* Sticky Glassmorphism Header */}
+      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-4 bg-white/70 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Payments</h1>
+          <p className="text-gray-500">Manage your wallet and transactions</p>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-4 gap-4">
@@ -133,7 +124,7 @@ export default function Payments() {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Pending Final Payments</h2>
-              <p className="text-gray-500 text-sm">Jobs awaiting final payment (after 5% commission)</p>
+              <p className="text-gray-500 text-sm">Jobs awaiting final payment (after 7% commission)</p>
             </div>
           </div>
           <span className="px-3 py-1 rounded-lg bg-amber-100 text-amber-700 text-sm font-medium">
@@ -170,7 +161,7 @@ export default function Payments() {
                     <div className="text-right">
                       <div className="text-lg font-bold text-green-600">₹{finalAmount.toFixed(2)}</div>
                       <div className="text-xs text-gray-400">
-                        (₹{doerPayout.toFixed(2)} to doer after 5%)
+                        (₹{doerPayout.toFixed(2)} to doer after 7%)
                       </div>
                     </div>
                     <Link

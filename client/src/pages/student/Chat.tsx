@@ -2,8 +2,60 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { useChatStore, useAuthStore } from '../../store'
 import { format } from 'date-fns'
-import { ArrowLeft, Send, Phone, Video, Search, Wifi, WifiOff, RefreshCw, LogIn, X } from 'lucide-react'
+import { ArrowLeft, Send, Phone, Video, Search, Wifi, WifiOff, RefreshCw, LogIn, X, Paperclip, FileText, Loader2, Link as LinkIcon } from 'lucide-react'
+import { messagesAPI } from '../../services/api'
 import toast from 'react-hot-toast'
+
+const formatMessageTime = (dateString: string | Date) => {
+  // Parse the date string and ensure it's in local timezone
+  let date: Date
+  if (typeof dateString === 'string') {
+    // If it's an ISO string with Z suffix, parse directly
+    // Otherwise, append UTC indicator to ensure correct parsing
+    if (dateString.endsWith('Z')) {
+      date = new Date(dateString)
+    } else {
+      // Try to parse as local time first
+      date = new Date(dateString)
+      // If the parsed date is significantly different, try UTC
+      if (Math.abs(date.getTime() - new Date(dateString + 'Z').getTime()) > 12 * 60 * 60 * 1000) {
+        date = new Date(dateString + 'Z')
+      }
+    }
+  } else {
+    date = dateString
+  }
+  
+  // Create a copy of now for comparison
+  const now = new Date()
+  
+  // Check if the date is today (compare in local time)
+  const isToday = date.getFullYear() === now.getFullYear() &&
+                  date.getMonth() === now.getMonth() &&
+                  date.getDate() === now.getDate()
+  
+  // Check if the date is yesterday
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const isYesterday = date.getFullYear() === yesterday.getFullYear() &&
+                      date.getMonth() === yesterday.getMonth() &&
+                      date.getDate() === yesterday.getDate()
+  
+  // Check if within this week (last 7 days)
+  const weekAgo = new Date(now)
+  weekAgo.setDate(weekAgo.getDate() - 7)
+  const isThisWeek = date >= weekAgo && date <= now
+  
+  if (isToday) {
+    return format(date, 'h:mm a')
+  } else if (isYesterday) {
+    return 'Yesterday ' + format(date, 'h:mm a')
+  } else if (isThisWeek) {
+    return format(date, 'EEEE h:mm a')
+  } else {
+    return format(date, 'MMM d, h:mm a')
+  }
+}
 
 export default function Chat() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -32,6 +84,8 @@ export default function Chat() {
   const inputRef = useRef<HTMLInputElement>(null)
   const lastMessageRef = useRef<string>('')
   const [showMobileChat, setShowMobileChat] = useState(false)
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -80,9 +134,37 @@ export default function Chat() {
     setMessage('')
   }, [message, currentChat, sendMessage, searchParams])
 
+  const isImage = (type?: string) => type === 'image' || type?.startsWith('image/')
+
   const handleRetry = () => {
     clearWsError()
     connectWebSocket()
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentChat) return
+
+    setUploadingFile(true)
+    try {
+      const { data } = await messagesAPI.uploadFile(file)
+      const jobId = searchParams.get('job_id')
+      sendMessage(
+        currentChat, 
+        `Shared a file: ${file.name}`, 
+        jobId ? parseInt(jobId) : undefined,
+        data.url,
+        file.type.startsWith('image/') ? 'image' : 'file'
+      )
+      toast.success('File sent')
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to upload file')
+    } finally {
+      setUploadingFile(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
   }
 
   const handleBack = () => {
@@ -201,16 +283,20 @@ export default function Chat() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <div className="font-medium text-gray-900 truncate">{conv.user_name}</div>
-                  <div className={`text-sm truncate ${conv.unread_count > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
-                    {conv.last_message || 'No messages yet'}
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-gray-900 truncate">{conv.user_name}</div>
+                    {conv.last_message_time && (
+                      <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
+                        {formatMessageTime(conv.last_message_time)}
+                      </span>
+                    )}
                   </div>
+                  {conv.unread_count > 0 && (
+                    <div className="text-xs text-primary-600 font-medium mt-0.5">
+                      {conv.unread_count} unread message{conv.unread_count > 1 ? 's' : ''}
+                    </div>
+                  )}
                 </div>
-                {conv.last_message_time && (
-                  <span className="text-xs text-gray-400 flex-shrink-0">
-                    {format(new Date(conv.last_message_time), 'HH:mm')}
-                  </span>
-                )}
               </button>
             ))
           ) : (
@@ -296,6 +382,9 @@ export default function Chat() {
               {currentMessages.map((msg: any, index: number) => {
                 const isOwn = msg.sender_id === user?.id
                 const showAvatar = index === 0 || currentMessages[index - 1]?.sender_id !== msg.sender_id
+                const hasAttachment = msg.attachment_url
+                const isAttachmentImage = isImage(msg.attachment_type) || (hasAttachment && /\.(jpg|jpeg|png|gif|webp)$/i.test(msg.attachment_url))
+                const isExternalUrl = hasAttachment && (msg.attachment_url.startsWith('http://') || msg.attachment_url.startsWith('https://'))
                 
                 return (
                   <div
@@ -309,17 +398,76 @@ export default function Chat() {
                     )}
                     {!isOwn && !showAvatar && <div className="w-8 mr-2" />}
                     <div
-                      className={`max-w-[70%] p-3 rounded-2xl ${
+                      className={`max-w-[70%] rounded-2xl ${
                         isOwn
                           ? 'bg-primary-500 text-white rounded-br-md'
                           : 'bg-white border border-gray-200 rounded-bl-md'
                       } ${msg.is_temp ? 'opacity-70' : ''}`}
                     >
-                      <p className="text-sm sm:text-base">{msg.content}</p>
-                      <p className={`text-xs mt-1 ${isOwn ? 'text-white/70' : 'text-gray-400'}`}>
-                        {format(new Date(msg.created_at), 'h:mm a')}
-                        {msg.is_temp && ' • sending...'}
-                      </p>
+                      {hasAttachment && (
+                        <div className="p-2">
+                          {isAttachmentImage ? (
+                            <a 
+                              href={msg.attachment_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="block"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                window.open(msg.attachment_url, '_blank')
+                              }}
+                            >
+                              <img 
+                                src={msg.attachment_url} 
+                                alt="Attachment" 
+                                className="max-w-full max-h-64 rounded-lg object-cover hover:opacity-90 transition-opacity cursor-pointer"
+                              />
+                            </a>
+                          ) : isExternalUrl ? (
+                            <a 
+                              href={msg.attachment_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className={`flex items-center gap-3 p-3 rounded-lg ${
+                                isOwn ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-50 hover:bg-gray-100'
+                              } transition-colors`}
+                            >
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isOwn ? 'bg-white/20' : 'bg-blue-100'}`}>
+                                <LinkIcon size={20} className={isOwn ? 'text-white' : 'text-blue-500'} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium truncate text-sm">Shared Link</p>
+                                <p className={`text-xs truncate ${isOwn ? 'text-white/70' : 'text-gray-400'}`}>{msg.attachment_url}</p>
+                              </div>
+                            </a>
+                          ) : (
+                            <a 
+                              href={msg.attachment_url} 
+                              download
+                              className={`flex items-center gap-3 p-3 rounded-lg ${
+                                isOwn ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-50 hover:bg-gray-100'
+                              } transition-colors`}
+                            >
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isOwn ? 'bg-white/20' : 'bg-primary-100'}`}>
+                                <FileText size={20} className={isOwn ? 'text-white' : 'text-primary-500'} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium truncate text-sm">{msg.content.replace('Shared a file: ', '')}</p>
+                                <p className={`text-xs ${isOwn ? 'text-white/70' : 'text-gray-400'}`}>Click to download</p>
+                              </div>
+                            </a>
+                          )}
+                        </div>
+                      )}
+                      <div className="px-3 pb-3">
+                        {msg.content && !msg.content.startsWith('Shared a file:') && (
+                          <p className="text-sm sm:text-base">{msg.content}</p>
+                        )}
+                        <p className={`text-xs mt-1 ${isOwn ? 'text-white/70' : 'text-gray-400'}`}>
+                          {formatMessageTime(msg.created_at)}
+                          {msg.is_temp && ' • sending...'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )
@@ -329,6 +477,26 @@ export default function Chat() {
 
             <form onSubmit={handleSend} className="p-4 border-t border-gray-100 bg-white">
               <div className="flex gap-3">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  accept="image/*,.pdf,.doc,.docx,.txt"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingFile}
+                  className="p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  title="Attach file"
+                >
+                  {uploadingFile ? (
+                    <Loader2 size={20} className="text-gray-500 animate-spin" />
+                  ) : (
+                    <Paperclip size={20} className="text-gray-500" />
+                  )}
+                </button>
                 <input
                   ref={inputRef}
                   type="text"

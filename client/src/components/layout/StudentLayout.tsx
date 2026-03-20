@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuthStore, useNotificationStore, useChatStore } from '../../store'
 import { 
@@ -42,7 +42,6 @@ export default function StudentLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [unreadChats, setUnreadChats] = useState(0)
-  const navigate = useNavigate()
   const location = useLocation()
 
   useEffect(() => {
@@ -76,7 +75,7 @@ export default function StudentLayout() {
 
   const handleLogout = () => {
     logout()
-    navigate('/')
+    window.location.href = '/login'
   }
 
   const currentPageName = pageNames[location.pathname] || 'Dashboard'
@@ -91,13 +90,27 @@ export default function StudentLayout() {
 
       {/* Fixed Top Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 h-16">
-        <div className="flex items-center justify-between h-full px-4 lg:px-6">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between h-full px-4">
+          {/* Left side - Menu & Logo */}
+          <div className="flex items-center gap-3">
+            {/* Single hamburger menu toggle */}
             <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              onClick={() => {
+                // On mobile, toggle mobile menu
+                // On desktop, toggle sidebar collapse
+                if (window.innerWidth < 1024) {
+                  setMobileMenuOpen(!mobileMenuOpen)
+                } else {
+                  setSidebarCollapsed(!sidebarCollapsed)
+                }
+              }}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <Menu size={22} className="text-gray-600" />
+              {mobileMenuOpen ? (
+                <X size={22} className="text-gray-600" />
+              ) : (
+                <Menu size={22} className="text-gray-600" />
+              )}
             </button>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
@@ -107,15 +120,15 @@ export default function StudentLayout() {
             </div>
           </div>
 
-          <div className="flex-1 flex items-center justify-center lg:justify-start lg:ml-8">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <span>Home</span>
-              <ChevronRight size={14} />
-              <span className="font-medium text-gray-900">{currentPageName}</span>
-            </div>
+          {/* Center - Breadcrumb */}
+          <div className="hidden md:flex items-center gap-2 text-sm text-gray-500">
+            <span>Home</span>
+            <ChevronRight size={14} />
+            <span className="font-medium text-gray-900">{currentPageName}</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Right side - Icons */}
+          <div className="flex items-center gap-1 sm:gap-2">
             <NavLink
               to="/dashboard/chat"
               className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -149,16 +162,28 @@ export default function StudentLayout() {
       <aside className={`
         fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] bg-white border-r border-gray-200
         transform transition-all duration-300 ease-in-out
-        ${sidebarCollapsed ? 'w-16' : 'w-64'}
+        w-64
+        ${sidebarCollapsed ? 'lg:w-16' : ''}
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="flex flex-col h-full">
+          {/* Mobile close button */}
+          <div className="lg:hidden flex justify-end p-2 border-b border-gray-100">
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-lg hover:bg-gray-100"
+            >
+              <X size={20} className="text-gray-500" />
+            </button>
+          </div>
+
           <nav className="flex-1 overflow-y-auto py-4">
             {navItems.map(({ to, icon: Icon, label }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={to === '/dashboard'}
+                onClick={() => setMobileMenuOpen(false)}
                 className={({ isActive }) =>
                   `flex items-center gap-3 mx-2 px-3 py-3 rounded-xl transition-all ${
                     sidebarCollapsed ? 'justify-center' : ''
@@ -198,22 +223,12 @@ export default function StudentLayout() {
         />
       )}
 
-      {/* Mobile Menu Button (when sidebar is hidden) */}
-      {!sidebarCollapsed && (
-        <button
-          onClick={() => setSidebarCollapsed(true)}
-          className="fixed bottom-4 right-4 z-30 p-4 bg-primary-500 text-white rounded-full shadow-lg lg:hidden"
-        >
-          <X size={20} />
-        </button>
-      )}
-
       {/* Main Content */}
       <div className={`
         pt-16 min-h-screen transition-all duration-300
         ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'}
       `}>
-        <main className="p-4 lg:p-6">
+        <main className="p-4 md:p-6 overflow-y-auto" style={{ height: 'calc(100vh - 4rem)' }}>
           <Outlet />
         </main>
       </div>

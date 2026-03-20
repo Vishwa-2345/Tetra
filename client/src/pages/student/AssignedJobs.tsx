@@ -40,24 +40,26 @@ export default function AssignedJobs() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Assigned Jobs</h1>
-        <p className="text-gray-500">Jobs assigned to you</p>
-      </div>
+    <div className="animate-fade-in">
+      {/* Sticky Glassmorphism Header */}
+      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-4 bg-white/70 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Assigned Jobs</h1>
+          <p className="text-gray-500">Jobs assigned to you</p>
+        </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {['all', 'assigned', 'in_progress', 'completed', 'cancelled'].map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg text-sm capitalize transition-colors ${
-              filter === status
-                ? 'bg-primary-500 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            {status.replace('_', ' ')}
+        <div className="flex gap-2 flex-wrap">
+          {['all', 'assigned', 'in_progress', 'completed', 'cancelled'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilter(status)}
+              className={`px-4 py-2 rounded-lg text-sm capitalize transition-colors ${
+                filter === status
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-white/80 backdrop-blur text-gray-600 hover:bg-gray-100/80'
+              }`}
+            >
+              {status.replace('_', ' ')}
           </button>
         ))}
       </div>
@@ -133,6 +135,7 @@ export default function AssignedJobs() {
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }

@@ -6,6 +6,52 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 
+const formatNotificationTime = (dateString: string | Date) => {
+  // Parse the date string and ensure it's in local timezone
+  let date: Date
+  if (typeof dateString === 'string') {
+    if (dateString.endsWith('Z')) {
+      date = new Date(dateString)
+    } else {
+      date = new Date(dateString)
+      if (Math.abs(date.getTime() - new Date(dateString + 'Z').getTime()) > 12 * 60 * 60 * 1000) {
+        date = new Date(dateString + 'Z')
+      }
+    }
+  } else {
+    date = dateString
+  }
+  
+  const now = new Date()
+  
+  // Check if the date is today (compare in local time)
+  const isToday = date.getFullYear() === now.getFullYear() &&
+                  date.getMonth() === now.getMonth() &&
+                  date.getDate() === now.getDate()
+  
+  // Check if the date is yesterday
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const isYesterday = date.getFullYear() === yesterday.getFullYear() &&
+                      date.getMonth() === yesterday.getMonth() &&
+                      date.getDate() === yesterday.getDate()
+  
+  // Check if within this week (last 7 days)
+  const weekAgo = new Date(now)
+  weekAgo.setDate(weekAgo.getDate() - 7)
+  const isThisWeek = date >= weekAgo && date <= now
+  
+  if (isToday) {
+    return format(date, 'h:mm a')
+  } else if (isYesterday) {
+    return 'Yesterday'
+  } else if (isThisWeek) {
+    return format(date, 'EEEE')
+  } else {
+    return format(date, 'MMM d')
+  }
+}
+
 const iconMap: Record<string, any> = {
   'status_update': Briefcase,
   'job_assigned': Briefcase,
@@ -58,22 +104,25 @@ export default function Notifications() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Notifications</h1>
-          <p className="text-gray-500 text-sm">
-            {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
-          </p>
+      {/* Sticky Glassmorphism Header */}
+      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-4 bg-white/70 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Notifications</h1>
+            <p className="text-gray-500 text-sm">
+              {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
+            </p>
+          </div>
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllAsRead}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100/80 backdrop-blur text-gray-700 text-sm font-medium hover:bg-gray-200/80 transition-colors"
+            >
+              <Check size={16} />
+              Mark all read
+            </button>
+          )}
         </div>
-        {unreadCount > 0 && (
-          <button
-            onClick={markAllAsRead}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors"
-          >
-            <Check size={16} />
-            Mark all read
-          </button>
-        )}
       </div>
 
       {notifications.length === 0 ? (
@@ -120,7 +169,7 @@ export default function Notifications() {
                       )}
                     </div>
                     <p className="text-xs text-gray-400 mt-2">
-                      {format(new Date(notif.created_at), 'MMM d, yyyy • h:mm a')}
+                      {formatNotificationTime(notif.created_at)}
                     </p>
                   </div>
                 </div>

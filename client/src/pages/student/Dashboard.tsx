@@ -25,20 +25,23 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Welcome back, {user.name?.split(' ')[0]}!</h1>
-          <p className="text-gray-500">Here's what's happening with your work</p>
+      {/* Sticky Glassmorphism Header */}
+      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-4 bg-white/70 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Welcome back, {user.name?.split(' ')[0]}!</h1>
+            <p className="text-gray-500">Here's what's happening with your work</p>
+          </div>
+          {!user.is_profile_complete && (
+            <Link
+              to="/dashboard/profile"
+              className="flex items-center gap-2 px-4 py-2 bg-amber-50/80 backdrop-blur text-amber-600 rounded-lg border border-amber-200"
+            >
+              <AlertCircle size={18} />
+              Complete Profile
+            </Link>
+          )}
         </div>
-        {!user.is_profile_complete && (
-          <Link
-            to="/dashboard/profile"
-            className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 rounded-lg border border-amber-200"
-          >
-            <AlertCircle size={18} />
-            Complete Profile
-          </Link>
-        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

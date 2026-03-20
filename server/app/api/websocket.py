@@ -167,6 +167,8 @@ async def websocket_endpoint(websocket: WebSocket, token: Optional[str]):
                 receiver_id = message_data.get("receiver_id")
                 content = message_data.get("content")
                 job_id = message_data.get("job_id")
+                attachment_url = message_data.get("attachment_url")
+                attachment_type = message_data.get("attachment_type")
 
                 if not receiver_id or not content:
                     await websocket.send_json({
@@ -183,15 +185,18 @@ async def websocket_endpoint(websocket: WebSocket, token: Optional[str]):
                             sender_id=user_id_int,
                             receiver_id=int(receiver_id),
                             job_id=job_id,
-                            content=content
+                            content=content,
+                            attachment_url=attachment_url,
+                            attachment_type=attachment_type
                         )
                         db.add(message)
                         
+                        content_preview = content[:50] if content else "a file"
                         notification = Notification(
                             user_id=int(receiver_id),
                             type="message",
                             title="New Message",
-                            message=f"{user.name} sent you a message: {content[:50]}...",
+                            message=f"{user.name} sent you a message: {content_preview}...",
                             related_id=None
                         )
                         db.add(notification)
@@ -207,6 +212,8 @@ async def websocket_endpoint(websocket: WebSocket, token: Optional[str]):
                             "receiver_id": int(receiver_id),
                             "content": content,
                             "job_id": job_id,
+                            "attachment_url": attachment_url,
+                            "attachment_type": attachment_type,
                             "created_at": message.created_at.isoformat()
                         }
 

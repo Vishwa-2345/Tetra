@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '../../store'
 import { 
@@ -29,7 +29,6 @@ export default function AdminLayout() {
   })
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
-  const navigate = useNavigate()
   const location = useLocation()
 
   useEffect(() => {
@@ -38,7 +37,7 @@ export default function AdminLayout() {
 
   const handleLogout = () => {
     logout()
-    navigate('/')
+    window.location.href = '/login'
   }
 
   const currentPageName = pageNames[location.pathname] || 'Dashboard'

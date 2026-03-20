@@ -26,12 +26,12 @@ export default function CreateJob() {
 
     setLoading(true)
     try {
-      const { data } = await jobsAPI.create({
+      await jobsAPI.create({
         ...formData,
         price: parseFloat(formData.price)
       })
       toast.success('Job created successfully!')
-      navigate(`/dashboard/my-jobs/${data.id}`)
+      navigate('/dashboard/my-jobs')
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to create job')
     } finally {
@@ -41,7 +41,7 @@ export default function CreateJob() {
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6">
+      <button onClick={() => navigate('/dashboard/my-jobs')} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6">
         <ArrowLeft size={18} /> Back
       </button>
 
@@ -118,7 +118,7 @@ export default function CreateJob() {
             <ul className="text-sm text-gray-600 space-y-1">
               <li>• Pay 50% advance when freelancer starts working</li>
               <li>• Remaining 50% paid when job is completed</li>
-              <li>• 5% platform fee deducted from final payment</li>
+              <li>• 7% platform fee deducted from final payment</li>
             </ul>
           </div>
 

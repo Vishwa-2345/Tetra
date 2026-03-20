@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_, desc
 from typing import List
+import os
+import uuid
+import aiofiles
 
 from app.core.database import get_db
 from app.models.models import User, Message, Job, Notification
@@ -9,6 +12,9 @@ from app.schemas.schemas import MessageCreate, MessageResponse
 from app.api.auth import get_current_user
 
 router = APIRouter(prefix="/messages", tags=["Messages"])
+
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.get("/conversations", response_model=List[dict])
 async def get_conversations(
@@ -62,7 +68,7 @@ async def get_conversations(
             "user_name": user.name,
             "user_photo": user.profile_photo,
             "last_message": last_message.content if last_message else None,
-            "last_message_time": last_message.created_at if last_message else None,
+            "last_message_time": last_message.created_at.isoformat() if last_message else None,
             "unread_count": unread
         })
     
@@ -119,15 +125,18 @@ async def send_message(
         sender_id=current_user.id,
         receiver_id=message_data.receiver_id,
         job_id=message_data.job_id,
-        content=message_data.content
+        content=message_data.content,
+        attachment_url=message_data.attachment_url,
+        attachment_type=message_data.attachment_type
     )
     db.add(message)
     
+    content_preview = message_data.content[:50] if message_data.content else "a file"
     notification = Notification(
         user_id=message_data.receiver_id,
         type="message",
         title="New Message",
-        message=f"{current_user.name} sent you a message: {message_data.content[:50]}...",
+        message=f"{current_user.name} sent you: {content_preview}...",
         related_id=None
     )
     db.add(notification)
@@ -136,3 +145,42 @@ async def send_message(
     await db.refresh(message)
     
     return MessageResponse.model_validate(message)
+
+@router.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    allowed_types = [
+        "image/jpeg", "image/png", "image/gif", "image/webp",
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/plain"
+    ]
+    
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="File type not allowed")
+    
+    max_size = 10 * 1024 * 1024
+    contents = await file.read()
+    if len(contents) > max_size:
+        raise HTTPException(status_code=400, detail="File size exceeds 10MB limit")
+    
+    file_ext = os.path.splitext(file.filename)[1] if file.filename else ""
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    
+    async with aiofiles.open(file_path, 'wb') as f:
+        await f.write(contents)
+    
+    attachment_type = "image" if file.content_type.startswith("image/") else "document"
+    
+    file_url = f"/uploads/{unique_filename}"
+    
+    return {
+        "url": file_url,
+        "type": attachment_type,
+        "filename": file.filename,
+        "size": len(contents)
+    }
