@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = "http://localhost:8000";
+const API_URL = "";  // Use relative path for proxy
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
@@ -47,6 +47,13 @@ export const usersAPI = {
   updateProfile: (data: any) => api.put('/users/profile', data),
   getProfileCompletion: () => api.get('/users/profile-completion'),
   getDashboardStats: () => api.get('/users/me/dashboard'),
+  uploadPhoto: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    // Don't set Content-Type header manually - axios will set it with the correct boundary
+    const response = await api.post('/users/profile/photo', formData);
+    return response;
+  },
 };
 
 export const jobsAPI = {
@@ -60,11 +67,17 @@ export const jobsAPI = {
   assign: (id: number, job_doer_id: number) => api.put(`/jobs/${id}/assign`, { job_doer_id }),
   getMyJobs: () => api.get('/jobs/my-jobs'),
   getAssignedJobs: () => api.get('/jobs/assigned-jobs'),
+  getByUser: (userId: number) => api.get(`/jobs/user/${userId}`),
+  getPendingFinalPayments: () => api.get('/jobs/pending-final-payments'),
+  apply: (jobId: number, message?: string) => api.post(`/jobs/${jobId}/apply`, { message }),
+  getApplications: (jobId: number) => api.get(`/jobs/${jobId}/applications`),
+  withdrawApplication: (jobId: number) => api.delete(`/jobs/${jobId}/withdraw`),
 };
 
 export const paymentsAPI = {
   payAdvance: (job_id: number) => api.post('/payments/advance', { job_id, amount: 0, transaction_type: 'advance' }),
   requestRefund: (job_id: number) => api.post('/payments/refund', { job_id, amount: 0, transaction_type: 'refund' }),
+  requestCancellation: (job_id: number, reason: string) => api.post('/payments/cancel-request', { job_id, reason }),
   payFinal: (job_id: number) => api.post('/payments/final', { job_id, amount: 0, transaction_type: 'final' }),
   getWallet: () => api.get('/payments/wallet'),
   getTransactions: (job_id?: number) => api.get('/payments/transactions', { params: { job_id } }),
@@ -81,8 +94,14 @@ export const messagesAPI = {
   getConversations: () => api.get('/messages/conversations'),
   getMessages: (userId: number, skip?: number, limit?: number) =>
     api.get(`/messages/${userId}`, { params: { skip, limit } }),
-  send: (data: { receiver_id: number; content: string; job_id?: number }) =>
+  send: (data: { receiver_id: number; content: string; job_id?: number; attachment_url?: string; attachment_type?: string }) =>
     api.post('/messages', data),
+  uploadFile: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    // Don't set Content-Type header manually - axios will set it with the correct boundary
+    return api.post('/messages/upload', formData);
+  },
 };
 
 export const notificationsAPI = {

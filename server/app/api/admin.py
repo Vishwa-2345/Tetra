@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from typing import List
 
 from app.core.database import get_db
@@ -135,7 +136,10 @@ async def get_all_jobs(
     admin: User = Depends(get_current_admin)
 ):
     from app.schemas.schemas import JobResponse
-    query = select(Job)
+    query = select(Job).options(
+        selectinload(Job.giver),
+        selectinload(Job.doer)
+    )
     if status:
         query = query.where(Job.status == status)
     query = query.offset(skip).limit(limit).order_by(Job.created_at.desc())

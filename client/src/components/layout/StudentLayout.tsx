@@ -1,16 +1,17 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuthStore, useNotificationStore, useChatStore } from '../../store'
 import { 
   LayoutDashboard, User, Search, Briefcase, CheckSquare, 
-  CreditCard, MessageCircle, Bell, LogOut, Menu, X
+  CreditCard, MessageCircle, Bell, LogOut, Menu, X, ChevronRight
 } from 'lucide-react'
 import { useState } from 'react'
+import LogoutConfirmModal from './LogoutConfirmModal'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/dashboard/profile', icon: User, label: 'My Profile' },
-  { to: '/dashboard/explore', icon: Search, label: 'Explore Freelancers' },
+  { to: '/dashboard/explore', icon: Search, label: 'Explore' },
   { to: '/dashboard/my-jobs', icon: Briefcase, label: 'My Jobs' },
   { to: '/dashboard/assigned-jobs', icon: CheckSquare, label: 'Assigned Jobs' },
   { to: '/dashboard/payments', icon: CreditCard, label: 'Payments' },
@@ -18,13 +19,34 @@ const navItems = [
   { to: '/dashboard/notifications', icon: Bell, label: 'Notifications' },
 ]
 
+const pageNames: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/dashboard/profile': 'My Profile',
+  '/dashboard/explore': 'Explore',
+  '/dashboard/my-jobs': 'My Jobs',
+  '/dashboard/assigned-jobs': 'Assigned Jobs',
+  '/dashboard/payments': 'Payments',
+  '/dashboard/chat': 'Messages',
+  '/dashboard/notifications': 'Notifications',
+  '/dashboard/create-job': 'Create Job',
+}
+
 export default function StudentLayout() {
   const { user, logout } = useAuthStore()
   const { unreadCount, fetchUnreadCount } = useNotificationStore()
   const { connectWebSocket, disconnectWebSocket, fetchConversations } = useChatStore()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed')
+    return saved ? JSON.parse(saved) : true
+  })
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [unreadChats, setUnreadChats] = useState(0)
-  const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(sidebarCollapsed))
+  }, [sidebarCollapsed])
 
   useEffect(() => {
     fetchUnreadCount()
@@ -47,150 +69,166 @@ export default function StudentLayout() {
     setUnreadChats(totalUnread)
   }, [useChatStore.getState().conversations])
 
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
+
   const handleLogout = () => {
     logout()
-    navigate('/')
+    window.location.href = '/login'
   }
 
-  return (
-    <div className="min-h-screen flex">
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+  const currentPageName = pageNames[location.pathname] || 'Dashboard'
 
-      {/* Sidebar - Fixed on all screens */}
-      <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50 
-        w-64 sm:w-72 bg-dark-200 border-r border-white/10
-        transform transition-transform duration-300 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        flex flex-col
-      `}>
-        <div className="h-full flex flex-col overflow-hidden">
-          {/* Logo */}
-          <div className="p-4 sm:p-6 border-b border-white/10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-purple-500 flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">T</span>
-                </div>
-                <div>
-                  <h1 className="font-bold text-lg gradient-text">Tetragrid</h1>
-                  <p className="text-xs text-slate-400">Freelance Platform</p>
-                </div>
+  return (
+    <div className="min-h-screen bg-dark-800">
+      <LogoutConfirmModal 
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+      />
+
+      {/* Fixed Top Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 h-16">
+        <div className="flex items-center justify-between h-full px-4">
+          {/* Left side - Menu & Logo */}
+          <div className="flex items-center gap-3">
+            {/* Single hamburger menu toggle */}
+            <button
+              onClick={() => {
+                // On mobile, toggle mobile menu
+                // On desktop, toggle sidebar collapse
+                if (window.innerWidth < 1024) {
+                  setMobileMenuOpen(!mobileMenuOpen)
+                } else {
+                  setSidebarCollapsed(!sidebarCollapsed)
+                }
+              }}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              {mobileMenuOpen ? (
+                <X size={22} className="text-gray-600" />
+              ) : (
+                <Menu size={22} className="text-gray-600" />
+              )}
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
+                <span className="text-white font-bold text-sm">T</span>
               </div>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-2 rounded-lg hover:bg-white/10"
-              >
-                <X size={20} className="text-slate-400" />
-              </button>
+              <span className="font-semibold text-gray-900 hidden sm:block">Tetragrid</span>
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-hide">
+          {/* Center - Breadcrumb */}
+          <div className="hidden md:flex items-center gap-2 text-sm text-gray-500">
+            <span>Home</span>
+            <ChevronRight size={14} />
+            <span className="font-medium text-gray-900">{currentPageName}</span>
+          </div>
+
+          {/* Right side - Icons */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            <NavLink
+              to="/dashboard/chat"
+              className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <MessageCircle size={22} className="text-gray-500" />
+              {unreadChats > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 rounded-full text-xs flex items-center justify-center font-medium text-white">
+                  {unreadChats > 9 ? '9+' : unreadChats}
+                </span>
+              )}
+            </NavLink>
+            <NavLink
+              to="/dashboard/notifications"
+              className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <Bell size={22} className="text-gray-500" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center font-medium text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </NavLink>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center ml-2">
+              <span className="text-white font-semibold text-sm">{user?.name?.charAt(0)}</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] bg-white border-r border-gray-200
+        transform transition-all duration-300 ease-in-out
+        w-64
+        ${sidebarCollapsed ? 'lg:w-16' : ''}
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        <div className="flex flex-col h-full">
+          {/* Mobile close button */}
+          <div className="lg:hidden flex justify-end p-2 border-b border-gray-100">
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-lg hover:bg-gray-100"
+            >
+              <X size={20} className="text-gray-500" />
+            </button>
+          </div>
+
+          <nav className="flex-1 overflow-y-auto py-4">
             {navItems.map(({ to, icon: Icon, label }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={to === '/dashboard'}
+                onClick={() => setMobileMenuOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  `flex items-center gap-3 mx-2 px-3 py-3 rounded-xl transition-all ${
+                    sidebarCollapsed ? 'justify-center' : ''
+                  } ${
                     isActive
-                      ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      ? 'bg-primary-50 text-primary-600'
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }`
                 }
-                onClick={() => setSidebarOpen(false)}
               >
-                <Icon size={20} />
-                <span className="text-sm sm:text-base">{label}</span>
+                <Icon size={20} className={sidebarCollapsed ? '' : 'flex-shrink-0'} />
+                {!sidebarCollapsed && <span className="text-sm font-medium">{label}</span>}
               </NavLink>
             ))}
           </nav>
 
-          {/* User Profile & Logout */}
-          <div className="p-4 border-t border-white/10">
-            <div className="glass rounded-xl p-3 mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-purple-400 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-semibold text-sm">{user?.name?.charAt(0)}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{user?.name}</p>
-                  <p className="text-xs text-slate-400 truncate">{user?.email}</p>
-                </div>
-              </div>
-              {!user?.is_profile_complete && (
-                <div className="mt-2 text-xs text-amber-400 bg-amber-500/10 px-2 py-1 rounded-lg">
-                  Complete your profile to start!
-                </div>
-              )}
-            </div>
+          <div className="p-2 border-t border-gray-200">
             <button
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors"
+              onClick={() => setShowLogoutModal(true)}
+              className={`
+                w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors
+                ${sidebarCollapsed ? 'justify-center' : ''}
+              `}
             >
-              <LogOut size={18} />
-              <span className="text-sm">Logout</span>
+              <LogOut size={20} />
+              {!sidebarCollapsed && <span className="text-sm font-medium">Logout</span>}
             </button>
           </div>
         </div>
       </aside>
 
+      {/* Mobile Overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-0">
-        {/* Top Header */}
-        <header className="sticky top-0 z-40 bg-dark-300/95 backdrop-blur-xl border-b border-white/10">
-          <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
-            >
-              <Menu size={24} className="text-slate-300" />
-            </button>
-
-            {/* Page Title - Mobile */}
-            <div className="flex-1 lg:hidden" />
-
-            {/* Right Actions */}
-            <div className="flex items-center gap-2 sm:gap-4">
-              <NavLink
-                to="/dashboard/chat"
-                className="relative p-2 rounded-lg hover:bg-white/10 transition-colors"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <MessageCircle size={22} className="text-slate-300" />
-                {unreadChats > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full text-xs flex items-center justify-center font-medium text-white">
-                    {unreadChats > 9 ? '9+' : unreadChats}
-                  </span>
-                )}
-              </NavLink>
-              <NavLink
-                to="/dashboard/notifications"
-                className="relative p-2 rounded-lg hover:bg-white/10 transition-colors"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <Bell size={22} className="text-slate-300" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center font-medium text-white">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </NavLink>
-            </div>
-          </div>
-        </header>
-
-        {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6">
+      <div className={`
+        pt-16 min-h-screen transition-all duration-300
+        ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'}
+      `}>
+        <main className="p-4 md:p-6 overflow-y-auto" style={{ height: 'calc(100vh - 4rem)' }}>
           <Outlet />
         </main>
       </div>

@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, Link } from 'react-router-dom'
 import { useAuthStore } from '../../store'
 import { usersAPI, reviewsAPI } from '../../services/api'
 import toast from 'react-hot-toast'
 import { 
-  Save, Camera, MapPin, DollarSign, Github, 
-  Link as LinkIcon, Star, CheckCircle, Loader2
+  Save, Camera, MapPin, DollarSign, Github, Linkedin,
+  Link as LinkIcon, Star, CheckCircle, Loader2, ExternalLink,
+  Edit2, X, Award, Navigation, ArrowLeft
 } from 'lucide-react'
 
 export default function Profile() {
@@ -15,7 +16,8 @@ export default function Profile() {
   const [profile, setProfile] = useState(currentUser)
   const [loading, setLoading] = useState(!isOwnProfile)
   const [saving, setSaving] = useState(false)
-  const [gettingLocation, setGettingLocation] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [editing, setEditing] = useState(false)
   const [reviews, setReviews] = useState<any[]>([])
   const [formData, setFormData] = useState({
     name: currentUser?.name || '',
@@ -24,18 +26,71 @@ export default function Profile() {
     experience: currentUser?.experience || '',
     portfolio: currentUser?.portfolio || '',
     github: currentUser?.github || '',
+    linkedin: currentUser?.linkedin || '',
     projects: currentUser?.projects || '',
     upi_id: currentUser?.upi_id || '',
-    latitude: currentUser?.latitude || '',
-    longitude: currentUser?.longitude || '',
     address: currentUser?.address || '',
   })
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [gettingLocation, setGettingLocation] = useState(false)
 
   useEffect(() => {
     if (!isOwnProfile && userId) {
       fetchProfile()
     }
   }, [userId])
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser')
+      return
+    }
+    setGettingLocation(true)
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+          )
+          const data = await response.json()
+          const address = data.address
+          const locationParts = [
+            address.city || address.town || address.village || address.suburb,
+            address.state,
+            address.country
+          ].filter(Boolean)
+          const formattedAddress = locationParts.join(', ')
+          setFormData(prev => ({ ...prev, address: formattedAddress }))
+          toast.success('Location added!')
+        } catch (error) {
+          toast.error('Failed to get address from location')
+        } finally {
+          setGettingLocation(false)
+        }
+      },
+      () => {
+        toast.error('Unable to retrieve your location')
+        setGettingLocation(false)
+      }
+    )
+  }
+
+  useEffect(() => {
+    if (!isOwnProfile) return
+    setFormData({
+      name: currentUser?.name || '',
+      bio: currentUser?.bio || '',
+      skills: currentUser?.skills || '',
+      experience: currentUser?.experience || '',
+      portfolio: currentUser?.portfolio || '',
+      github: currentUser?.github || '',
+      linkedin: currentUser?.linkedin || '',
+      projects: currentUser?.projects || '',
+      upi_id: currentUser?.upi_id || '',
+      address: currentUser?.address || '',
+    })
+  }, [currentUser])
 
   const fetchProfile = async () => {
     try {
@@ -59,47 +114,35 @@ export default function Profile() {
     }
   }
 
-  const getCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser')
-      return
-    }
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
 
-    setGettingLocation(true)
-    
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setFormData(prev => ({
-          ...prev,
-          latitude: position.coords.latitude.toString(),
-          longitude: position.coords.longitude.toString()
-        }))
-        toast.success('Location captured!')
-        setGettingLocation(false)
-      },
-      () => {
-        toast.error('Unable to get location. Please allow location access.')
-        setGettingLocation(false)
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+    setUploadingPhoto(true)
+    try {
+      const { data } = await usersAPI.uploadPhoto(file)
+      updateUser(data)
+      setProfile(data)
+      toast.success('Profile photo updated!')
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to upload photo')
+    } finally {
+      setUploadingPhoto(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
       }
-    )
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
     try {
-      const { data } = await usersAPI.updateProfile({
-        ...formData,
-        latitude: formData.latitude ? parseFloat(String(formData.latitude)) : null,
-        longitude: formData.longitude ? parseFloat(String(formData.longitude)) : null,
-      })
+      const { data } = await usersAPI.updateProfile(formData)
       updateUser(data)
-      toast.success('Profile updated successfully')
+      setProfile(data)
+      setEditing(false)
+      toast.success('Profile updated successfully!')
     } catch (error) {
       toast.error('Failed to update profile')
     } finally {
@@ -117,40 +160,129 @@ export default function Profile() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-      <div className="glass rounded-2xl overflow-hidden">
-        <div className="h-24 sm:h-32 bg-gradient-to-r from-primary-500/50 to-purple-500/50" />
-        <div className="px-4 sm:px-8 pb-6 sm:pb-8">
-          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6 -mt-12 sm:-mt-16">
+      {/* Sticky Glassmorphism Header */}
+      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-4 bg-white/70 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {!isOwnProfile && (
+              <Link
+                to="/dashboard/explore"
+                className="p-2 rounded-lg hover:bg-white/50 transition-colors"
+              >
+                <ArrowLeft size={20} className="text-gray-600" />
+              </Link>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {isOwnProfile ? 'My Profile' : `${profile?.name}'s Profile`}
+              </h1>
+              <p className="text-gray-500">Manage your profile information</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Profile Header Card */}
+      <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+        {/* Cover gradient */}
+        <div className="h-28 sm:h-36 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500" />
+        
+        {/* Profile info */}
+        <div className="px-4 sm:px-8 pb-6">
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6 -mt-16 sm:-mt-20">
+            {/* Avatar - Circular */}
             <div className="relative">
-              <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-primary-500 to-purple-500 flex items-center justify-center text-2xl sm:text-4xl font-bold text-white border-4 border-dark-200">
-                {profile?.name?.charAt(0)}
-              </div>
+              {profile?.profile_photo ? (
+                <img 
+                  src={profile.profile_photo} 
+                  alt={profile.name}
+                  className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                />
+              ) : (
+                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-3xl sm:text-4xl font-bold text-white border-4 border-white shadow-lg">
+                  {profile?.name?.charAt(0) || 'U'}
+                </div>
+              )}
               {isOwnProfile && (
-                <button className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-dark-200 flex items-center justify-center hover:bg-dark-100 transition-colors border border-white/10">
-                  <Camera size={14} />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="absolute bottom-0 right-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-500 text-white flex items-center justify-center hover:bg-primary-600 transition-colors shadow-md disabled:opacity-50 border-2 border-white"
+                >
+                  {uploadingPhoto ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Camera size={16} />
+                  )}
                 </button>
               )}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handlePhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
             </div>
-            <div className="flex-1 pt-2 sm:pt-16 w-full sm:w-auto">
-              <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-xl sm:text-2xl font-bold">{profile?.name}</h1>
-                {profile?.is_verified && (
-                  <CheckCircle className="text-green-400" size={18} />
+
+            {/* Info */}
+            <div className="flex-1 pt-2 sm:pt-20 w-full">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{profile?.name}</h1>
+                    {profile?.is_verified && (
+                      <CheckCircle className="text-green-500" size={20} />
+                    )}
+                  </div>
+                  <p className="text-gray-500 text-sm mb-3">{profile?.email}</p>
+                </div>
+                {isOwnProfile && !editing && (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors text-sm font-medium"
+                  >
+                    <Edit2 size={16} /> Edit Profile
+                  </button>
+                )}
+                {editing && (
+                  <button
+                    onClick={() => {
+                      setEditing(false)
+                      setFormData({
+                        name: currentUser?.name || '',
+                        bio: currentUser?.bio || '',
+                        skills: currentUser?.skills || '',
+                        experience: currentUser?.experience || '',
+                        portfolio: currentUser?.portfolio || '',
+                        github: currentUser?.github || '',
+                        linkedin: currentUser?.linkedin || '',
+                        projects: currentUser?.projects || '',
+                        upi_id: currentUser?.upi_id || '',
+                        address: currentUser?.address || '',
+                      })
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors text-sm font-medium"
+                  >
+                    <X size={16} /> Cancel
+                  </button>
                 )}
               </div>
-              <p className="text-slate-400 text-sm mb-3">{profile?.email}</p>
-              <div className="flex flex-wrap gap-3 text-xs sm:text-sm">
-                <div className="flex items-center gap-1 text-slate-300">
-                  <Star className="text-amber-400 fill-amber-400" size={14} />
-                  <span>{profile?.avg_rating?.toFixed(1) || '0.0'} ({profile?.total_reviews || 0} reviews)</span>
+
+              {/* Stats row */}
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-lg">
+                  <Star className="text-amber-400 fill-amber-400" size={16} />
+                  <span className="font-semibold text-amber-700">{profile?.avg_rating?.toFixed(1) || '0.0'}</span>
+                  <span className="text-amber-600">({profile?.total_reviews || 0})</span>
                 </div>
-                <div className="flex items-center gap-1 text-slate-300">
-                  <CheckCircle className="text-green-400" size={14} />
-                  <span>{profile?.completed_jobs || 0} jobs completed</span>
+                <div className="flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-lg">
+                  <Award className="text-green-500" size={16} />
+                  <span className="font-semibold text-green-700">{profile?.completed_jobs || 0}</span>
+                  <span className="text-green-600">jobs done</span>
                 </div>
                 {profile?.address && (
-                  <div className="flex items-center gap-1 text-slate-300">
-                    <MapPin size={14} />
+                  <div className="flex items-center gap-1.5 text-gray-500">
+                    <MapPin size={16} />
                     <span>{profile.address}</span>
                   </div>
                 )}
@@ -160,215 +292,285 @@ export default function Profile() {
         </div>
       </div>
 
-      {isOwnProfile ? (
+      {/* Edit Form */}
+      {editing && isOwnProfile ? (
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="glass rounded-2xl p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Personal Information</h2>
-            <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-2">Bio</label>
+          <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+            <h2 className="text-lg font-semibold mb-4 text-gray-900">Edit Profile</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl text-sm border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
+                  placeholder="Your full name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
                 <textarea
                   value={formData.bio}
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl min-h-[100px] resize-none text-sm"
+                  className="w-full px-4 py-3 rounded-xl min-h-[100px] resize-none text-sm border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
                   placeholder="Tell us about yourself..."
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Skills</label>
-                <input
-                  type="text"
-                  value={formData.skills}
-                  onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl text-sm"
-                  placeholder="React, Node.js, Python..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Experience</label>
-                <input
-                  type="text"
-                  value={formData.experience}
-                  onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl text-sm"
-                  placeholder="2 years web development..."
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-2">Portfolio URL</label>
-                <div className="relative">
-                  <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input
-                    type="url"
-                    value={formData.portfolio}
-                    onChange={(e) => setFormData({ ...formData, portfolio: e.target.value })}
-                    className="w-full pl-12 pr-4 py-3 rounded-xl text-sm"
-                    placeholder="https://yourportfolio.com"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">GitHub URL</label>
-                <div className="relative">
-                  <Github className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input
-                    type="url"
-                    value={formData.github}
-                    onChange={(e) => setFormData({ ...formData, github: e.target.value })}
-                    className="w-full pl-12 pr-4 py-3 rounded-xl text-sm"
-                    placeholder="https://github.com/username"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">UPI ID (for payments)</label>
-                <div className="relative">
-                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Skills</label>
                   <input
                     type="text"
-                    value={formData.upi_id}
-                    onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
-                    className="w-full pl-12 pr-4 py-3 rounded-xl text-sm"
-                    placeholder="yourname@upi"
+                    value={formData.skills}
+                    onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl text-sm border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
+                    placeholder="React, Node.js, Python..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Experience</label>
+                  <input
+                    type="text"
+                    value={formData.experience}
+                    onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl text-sm border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
+                    placeholder="2 years web development..."
                   />
                 </div>
               </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-2">Projects</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Address / Location</label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="text"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      className="w-full pl-12 pr-4 py-3 rounded-xl text-sm border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
+                      placeholder="Your city or campus address"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={getCurrentLocation}
+                    disabled={gettingLocation}
+                    className="flex items-center gap-2 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors text-sm font-medium disabled:opacity-50"
+                  >
+                    {gettingLocation ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Navigation size={16} />
+                    )}
+                    {gettingLocation ? 'Getting...' : 'Share Location'}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Projects</label>
                 <textarea
                   value={formData.projects}
                   onChange={(e) => setFormData({ ...formData, projects: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl min-h-[100px] resize-none text-sm"
+                  className="w-full px-4 py-3 rounded-xl min-h-[80px] resize-none text-sm border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
                   placeholder="Describe your best projects..."
                 />
               </div>
             </div>
           </div>
 
-          <div className="glass rounded-2xl p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Location (for geo-filtering)</h2>
+          <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+            <h2 className="text-lg font-semibold mb-4 text-gray-900">Links & Payment</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Address</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Portfolio URL</label>
                 <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full pl-12 pr-4 py-3 rounded-xl text-sm"
-                    placeholder="Your city/campus address"
+                    type="url"
+                    value={formData.portfolio}
+                    onChange={(e) => setFormData({ ...formData, portfolio: e.target.value })}
+                    className="w-full pl-12 pr-4 py-3 rounded-xl text-sm border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
+                    placeholder="https://yourportfolio.com"
                   />
                 </div>
               </div>
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  type="button"
-                  onClick={getCurrentLocation}
-                  disabled={gettingLocation}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary-500/20 text-primary-400 border border-primary-500/30 hover:bg-primary-500/30 transition-colors"
-                >
-                  {gettingLocation ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <MapPin size={18} />
-                  )}
-                  <span className="text-sm font-medium">
-                    {gettingLocation ? 'Getting Location...' : 'Share My Location'}
-                  </span>
-                </button>
-              </div>
-
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Latitude</label>
-                  <input
-                    type="text"
-                    value={formData.latitude}
-                    onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl text-sm bg-white/5"
-                    placeholder="e.g., 28.6139"
-                    readOnly={gettingLocation}
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">GitHub URL</label>
+                  <div className="relative">
+                    <Github className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="url"
+                      value={formData.github}
+                      onChange={(e) => setFormData({ ...formData, github: e.target.value })}
+                      className="w-full pl-12 pr-4 py-3 rounded-xl text-sm border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
+                      placeholder="https://github.com/username"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Longitude</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn URL</label>
+                  <div className="relative">
+                    <Linkedin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="url"
+                      value={formData.linkedin}
+                      onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
+                      className="w-full pl-12 pr-4 py-3 rounded-xl text-sm border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
+                      placeholder="https://linkedin.com/in/username"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">UPI ID (for payments)</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type="text"
-                    value={formData.longitude}
-                    onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl text-sm bg-white/5"
-                    placeholder="e.g., 77.2090"
-                    readOnly={gettingLocation}
+                    value={formData.upi_id}
+                    onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
+                    className="w-full pl-12 pr-4 py-3 rounded-xl text-sm border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
+                    placeholder="yourname@upi"
                   />
                 </div>
               </div>
-              <p className="text-xs text-slate-500">
-                Click "Share My Location" to automatically capture your coordinates, or enter manually
-              </p>
             </div>
           </div>
 
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-3 sm:py-4 bg-gradient-to-r from-primary-500 to-purple-500 rounded-xl font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 sm:py-4 bg-primary-500 text-white rounded-xl font-semibold hover:bg-primary-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Save Changes'} <Save size={18} />
+            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </form>
       ) : (
-        <div className="glass rounded-2xl p-4 sm:p-6">
-          <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">About</h2>
-          <p className="text-slate-300 text-sm sm:text-base whitespace-pre-wrap">{profile?.bio || 'No bio available'}</p>
-          
-          <div className="mt-6">
-            <h3 className="font-medium mb-2 text-sm sm:text-base">Skills</h3>
-            <p className="text-slate-400 text-sm">{profile?.skills || 'Not specified'}</p>
-          </div>
-          
-          <div className="mt-6">
-            <h3 className="font-medium mb-2 text-sm sm:text-base">Experience</h3>
-            <p className="text-slate-400 text-sm">{profile?.experience || 'Not specified'}</p>
-          </div>
+        <>
+          {/* About Section */}
+          {profile?.bio && (
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+              <h2 className="text-lg font-semibold mb-3 text-gray-900">About</h2>
+              <p className="text-gray-600 text-sm sm:text-base whitespace-pre-wrap">{profile.bio}</p>
+            </div>
+          )}
 
-          <div className="mt-6">
-            <h3 className="font-medium mb-2 text-sm sm:text-base">Projects</h3>
-            <p className="text-slate-400 text-sm whitespace-pre-wrap">{profile?.projects || 'Not specified'}</p>
-          </div>
-        </div>
+          {/* Skills */}
+          {profile?.skills && (
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+              <h2 className="text-lg font-semibold mb-3 text-gray-900">Skills</h2>
+              <div className="flex flex-wrap gap-2">
+                {profile.skills.split(',').map((skill: string, i: number) => (
+                  <span key={i} className="px-3 py-1.5 rounded-lg bg-primary-50 text-primary-600 text-sm font-medium">
+                    {skill.trim()}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Experience */}
+          {profile?.experience && (
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+              <h2 className="text-lg font-semibold mb-3 text-gray-900">Experience</h2>
+              <p className="text-gray-600 text-sm">{profile.experience}</p>
+            </div>
+          )}
+
+          {/* Projects */}
+          {profile?.projects && (
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+              <h2 className="text-lg font-semibold mb-3 text-gray-900">Projects</h2>
+              <p className="text-gray-600 text-sm whitespace-pre-wrap">{profile.projects}</p>
+            </div>
+          )}
+
+          {/* Links */}
+          {(profile?.github || profile?.linkedin || profile?.portfolio) && (
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+              <h2 className="text-lg font-semibold mb-3 text-gray-900">Links</h2>
+              <div className="space-y-2">
+                {profile?.github && (
+                  <a
+                    href={profile.github}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
+                    <Github size={20} className="text-gray-700" />
+                    <span className="text-sm text-gray-700 flex-1">{profile.github}</span>
+                    <ExternalLink size={14} className="text-gray-400" />
+                  </a>
+                )}
+                {profile?.linkedin && (
+                  <a
+                    href={profile.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
+                    <Linkedin size={20} className="text-blue-600" />
+                    <span className="text-sm text-gray-700 flex-1">{profile.linkedin}</span>
+                    <ExternalLink size={14} className="text-gray-400" />
+                  </a>
+                )}
+                {profile?.portfolio && (
+                  <a
+                    href={profile.portfolio}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
+                    <LinkIcon size={20} className="text-primary-500" />
+                    <span className="text-sm text-gray-700 flex-1">Portfolio</span>
+                    <ExternalLink size={14} className="text-gray-400" />
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      <div className="glass rounded-2xl p-4 sm:p-6">
-        <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Reviews ({reviews.length})</h2>
+      {/* Reviews Section */}
+      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+        <h2 className="text-lg font-semibold mb-4 text-gray-900">Reviews ({reviews.length})</h2>
         <div className="space-y-4">
           {reviews.map((review) => (
-            <div key={review.id} className="p-4 rounded-xl bg-white/5">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-primary-400 to-purple-400 flex items-center justify-center text-sm sm:text-base">
-                  {review.reviewer?.name?.charAt(0)}
+            <div key={review.id} className="p-4 rounded-xl bg-gray-50">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold">
+                  {review.reviewer?.name?.charAt(0) || 'U'}
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium text-sm sm:text-base">{review.reviewer?.name}</div>
+                  <div className="font-medium text-gray-900">{review.reviewer?.name}</div>
                   <div className="flex items-center gap-1">
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
-                        size={12}
-                        className={i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}
+                        size={14}
+                        className={i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}
                       />
                     ))}
                   </div>
                 </div>
+                <span className="text-xs text-gray-400">
+                  {new Date(review.created_at).toLocaleDateString()}
+                </span>
               </div>
               {review.feedback && (
-                <p className="text-slate-400 text-xs sm:text-sm mt-2">{review.feedback}</p>
+                <p className="text-gray-600 text-sm">{review.feedback}</p>
               )}
             </div>
           ))}
           {reviews.length === 0 && (
-            <p className="text-center text-slate-500 py-6 sm:py-8 text-sm">No reviews yet</p>
+            <div className="text-center py-8 text-gray-400">
+              <Star className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>No reviews yet</p>
+            </div>
           )}
         </div>
       </div>

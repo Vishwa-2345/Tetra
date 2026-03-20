@@ -21,6 +21,7 @@ class UserUpdate(BaseModel):
     experience: Optional[str] = None
     portfolio: Optional[str] = None
     github: Optional[str] = None
+    linkedin: Optional[str] = None
     projects: Optional[str] = None
     bio: Optional[str] = None
     upi_id: Optional[str] = None
@@ -36,6 +37,7 @@ class UserResponse(UserBase):
     experience: Optional[str] = None
     portfolio: Optional[str] = None
     github: Optional[str] = None
+    linkedin: Optional[str] = None
     projects: Optional[str] = None
     bio: Optional[str] = None
     upi_id: Optional[str] = None
@@ -53,19 +55,6 @@ class UserResponse(UserBase):
 
     class Config:
         from_attributes = True
-        json_schema_extra = {
-            "example": {
-                "id": 1,
-                "email": "user@example.com",
-                "name": "John Doe",
-                "role": "student",
-                "is_verified": False,
-                "is_suspended": False,
-                "is_profile_complete": False,
-                "wallet_balance": 0.0,
-                "created_at": "2024-01-01T00:00:00"
-            }
-        }
 
 class NearbyUserResponse(UserResponse):
     distance_km: float
@@ -107,9 +96,27 @@ class JobResponse(JobBase):
     final_amount: float
     created_at: datetime
     completed_at: Optional[datetime] = None
+    assigned_at: Optional[datetime] = None
     giver: Optional[UserResponse] = None
     doer: Optional[UserResponse] = None
     avg_rating: Optional[float] = None
+    application_count: Optional[int] = 0
+    has_applied: Optional[bool] = False
+
+    class Config:
+        from_attributes = True
+
+class ApplicationCreate(BaseModel):
+    message: Optional[str] = None
+
+class ApplicationResponse(BaseModel):
+    id: int
+    job_id: int
+    applicant_id: int
+    message: Optional[str] = None
+    status: str
+    created_at: datetime
+    applicant: Optional[UserResponse] = None
 
     class Config:
         from_attributes = True
@@ -154,6 +161,8 @@ class MessageBase(BaseModel):
     receiver_id: int
     content: str
     job_id: Optional[int] = None
+    attachment_url: Optional[str] = None
+    attachment_type: Optional[str] = None
 
 class MessageCreate(MessageBase):
     pass
@@ -206,3 +215,7 @@ class WalletSummary(BaseModel):
     current_balance: float
     pending_payments: float
     transactions: List[TransactionResponse] = []
+
+class CancellationRequest(BaseModel):
+    job_id: int
+    reason: str = Field(..., min_length=10, description="Reason for cancellation (minimum 10 characters)")

@@ -32,32 +32,34 @@ export default function AssignedJobs() {
   })
 
   const statusColors: Record<string, string> = {
-    pending: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    assigned: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    in_progress: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-    completed: 'bg-green-500/20 text-green-400 border-green-500/30',
-    cancelled: 'bg-red-500/20 text-red-400 border-red-500/30',
+    pending: 'bg-amber-100 text-amber-700',
+    assigned: 'bg-blue-100 text-blue-700',
+    in_progress: 'bg-purple-100 text-purple-700',
+    completed: 'bg-green-100 text-green-700',
+    cancelled: 'bg-red-100 text-red-700',
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-bold mb-1">Assigned Jobs</h1>
-        <p className="text-slate-400">Jobs assigned to you</p>
-      </div>
+    <div className="animate-fade-in">
+      {/* Sticky Glassmorphism Header */}
+      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-4 bg-white/70 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Assigned Jobs</h1>
+          <p className="text-gray-500">Jobs assigned to you</p>
+        </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {['all', 'assigned', 'in_progress', 'completed', 'cancelled'].map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg text-sm capitalize transition-colors ${
-              filter === status
-                ? 'bg-primary-500 text-white'
-                : 'bg-white/5 hover:bg-white/10'
-            }`}
-          >
-            {status.replace('_', ' ')}
+        <div className="flex gap-2 flex-wrap">
+          {['all', 'assigned', 'in_progress', 'completed', 'cancelled'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilter(status)}
+              className={`px-4 py-2 rounded-lg text-sm capitalize transition-colors ${
+                filter === status
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-white/80 backdrop-blur text-gray-600 hover:bg-gray-100/80'
+              }`}
+            >
+              {status.replace('_', ' ')}
           </button>
         ))}
       </div>
@@ -65,10 +67,10 @@ export default function AssignedJobs() {
       {loading ? (
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="glass rounded-2xl p-6 animate-pulse">
-              <div className="h-6 bg-white/10 rounded w-48 mb-4" />
-              <div className="h-4 bg-white/10 rounded w-full mb-2" />
-              <div className="h-4 bg-white/10 rounded w-3/4" />
+            <div key={i} className="bg-white rounded-xl p-6 animate-pulse shadow-sm">
+              <div className="h-6 bg-gray-200 rounded w-48 mb-4" />
+              <div className="h-4 bg-gray-200 rounded w-full mb-2" />
+              <div className="h-4 bg-gray-200 rounded w-3/4" />
             </div>
           ))}
         </div>
@@ -76,46 +78,46 @@ export default function AssignedJobs() {
         <div className="space-y-4">
           {filteredJobs.map((job) => (
             <Link key={job.id} to={`/dashboard/assigned-jobs/${job.id}`} className="block">
-              <div className="glass rounded-2xl p-6 hover-lift">
+              <div className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                      <Briefcase className="text-purple-400" />
+                    <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+                      <Briefcase className="text-purple-500" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-lg">{job.title}</h3>
-                      <p className="text-slate-400 text-sm">
+                      <h3 className="font-semibold text-lg text-gray-900">{job.title}</h3>
+                      <p className="text-gray-500 text-sm">
                         From {job.giver?.name} • {format(new Date(job.created_at), 'MMM d, yyyy')}
                       </p>
                     </div>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border capitalize ${statusColors[job.status]}`}>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${statusColors[job.status]}`}>
                     {job.status.replace('_', ' ')}
                   </span>
                 </div>
 
-                <p className="text-slate-400 mb-4 line-clamp-2">{job.description}</p>
+                <p className="text-gray-500 mb-4 line-clamp-2">{job.description}</p>
 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-green-400 font-semibold">
+                  <div className="flex items-center gap-2 text-green-600 font-semibold">
                     <span>₹{job.price.toFixed(2)}</span>
                     {job.advance_paid && (
-                      <span className="text-sm font-normal text-slate-500">(+ ₹{job.advance_amount?.toFixed(2)} advance)</span>
+                      <span className="text-sm font-normal text-gray-400">(+ ₹{job.advance_amount?.toFixed(2)} advance)</span>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
                     {job.status === 'assigned' && (
-                      <span className="text-blue-400 text-sm flex items-center gap-1">
+                      <span className="text-blue-600 text-sm flex items-center gap-1 font-medium">
                         <Play size={14} /> Accept to Start
                       </span>
                     )}
                     {job.status === 'in_progress' && (
-                      <span className="text-purple-400 text-sm flex items-center gap-1">
+                      <span className="text-purple-600 text-sm flex items-center gap-1 font-medium">
                         <CheckCircle size={14} /> In Progress
                       </span>
                     )}
                     {job.status === 'completed' && (
-                      <span className="text-green-400 text-sm flex items-center gap-1">
+                      <span className="text-green-600 text-sm flex items-center gap-1 font-medium">
                         <CheckCircle size={14} /> Completed
                       </span>
                     )}
@@ -125,14 +127,15 @@ export default function AssignedJobs() {
             </Link>
           ))}
           {filteredJobs.length === 0 && (
-            <div className="text-center py-16 glass rounded-2xl">
-              <Briefcase className="w-16 h-16 mx-auto mb-4 text-slate-600" />
-              <h3 className="text-lg font-medium mb-2">No assigned jobs</h3>
-              <p className="text-slate-500">Jobs will appear here when assigned to you</p>
+            <div className="text-center py-16 bg-white rounded-xl shadow-sm">
+              <Briefcase className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No assigned jobs</h3>
+              <p className="text-gray-500">Jobs will appear here when assigned to you</p>
             </div>
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }

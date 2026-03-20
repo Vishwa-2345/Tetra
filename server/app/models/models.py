@@ -14,6 +14,12 @@ class JobStatus(str, enum.Enum):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
+    CANCELLATION_PENDING = "cancellation_pending"
+
+class ApplicationStatus(str, enum.Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
 
 class TransactionType(str, enum.Enum):
     ADVANCE = "advance"
@@ -40,6 +46,7 @@ class User(Base):
     experience = Column(String(500), nullable=True)
     portfolio = Column(String(500), nullable=True)
     github = Column(String(500), nullable=True)
+    linkedin = Column(String(500), nullable=True)
     projects = Column(Text, nullable=True)
     bio = Column(Text, nullable=True)
     
@@ -63,6 +70,7 @@ class User(Base):
     reviews_given = relationship("Review", foreign_keys="Review.reviewer_id", back_populates="reviewer")
     reviews_received = relationship("Review", foreign_keys="Review.reviewee_id", back_populates="reviewee")
     notifications = relationship("Notification", back_populates="user")
+    applications = relationship("JobApplication", back_populates="applicant")
 
 class Job(Base):
     __tablename__ = "jobs"
@@ -85,12 +93,29 @@ class Job(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
+    assigned_at = Column(DateTime, nullable=True)
     
     giver = relationship("User", foreign_keys=[job_giver_id], back_populates="jobs_given")
     doer = relationship("User", foreign_keys=[job_doer_id], back_populates="jobs_done")
     transactions = relationship("Transaction", back_populates="job")
     reviews = relationship("Review", back_populates="job")
     messages = relationship("Message", back_populates="job")
+    applications = relationship("JobApplication", back_populates="job")
+
+class JobApplication(Base):
+    __tablename__ = "job_applications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
+    applicant_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    message = Column(Text, nullable=True)
+    status = Column(String(50), default=ApplicationStatus.PENDING.value)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    job = relationship("Job", back_populates="applications")
+    applicant = relationship("User", back_populates="applications")
 
 class Transaction(Base):
     __tablename__ = "transactions"
@@ -132,6 +157,8 @@ class Message(Base):
     receiver_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     job_id = Column(Integer, ForeignKey("jobs.id"), nullable=True)
     content = Column(Text, nullable=False)
+    attachment_url = Column(String(500), nullable=True)
+    attachment_type = Column(String(50), nullable=True)
     is_read = Column(Boolean, default=False)
     
     created_at = Column(DateTime, default=datetime.utcnow)

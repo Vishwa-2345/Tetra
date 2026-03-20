@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     
     DATABASE_URL: str = "sqlite+aiosqlite:///./tetragrid.db"
     
-    PLATFORM_COMMISSION: float = 0.05
+    PLATFORM_COMMISSION: float = 0.07
     
     class Config:
         env_file = ".env"

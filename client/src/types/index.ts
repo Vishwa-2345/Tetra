@@ -8,6 +8,7 @@ export interface User {
   experience?: string;
   portfolio?: string;
   github?: string;
+  linkedin?: string;
   projects?: string;
   bio?: string;
   upi_id?: string;
@@ -46,9 +47,22 @@ export interface Job {
   final_amount: number;
   created_at: string;
   completed_at?: string;
+  assigned_at?: string;
   giver?: User;
   doer?: User;
   avg_rating?: number;
+  application_count?: number;
+  has_applied?: boolean;
+}
+
+export interface Application {
+  id: number;
+  job_id: number;
+  applicant_id: number;
+  message?: string;
+  status: string;
+  created_at: string;
+  applicant?: User;
 }
 
 export interface Transaction {
@@ -79,6 +93,8 @@ export interface Message {
   receiver_id: number;
   job_id?: number;
   content: string;
+  attachment_url?: string;
+  attachment_type?: string;
   is_read: boolean;
   created_at: string;
 }

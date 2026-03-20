@@ -26,12 +26,12 @@ export default function CreateJob() {
 
     setLoading(true)
     try {
-      const { data } = await jobsAPI.create({
+      await jobsAPI.create({
         ...formData,
         price: parseFloat(formData.price)
       })
       toast.success('Job created successfully!')
-      navigate(`/dashboard/my-jobs/${data.id}`)
+      navigate('/dashboard/my-jobs')
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to create job')
     } finally {
@@ -41,40 +41,40 @@ export default function CreateJob() {
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-400 hover:text-white mb-6">
+      <button onClick={() => navigate('/dashboard/my-jobs')} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6">
         <ArrowLeft size={18} /> Back
       </button>
 
-      <div className="glass rounded-2xl p-8">
+      <div className="bg-white rounded-2xl p-8 shadow-sm">
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-500/20 to-purple-500/20 flex items-center justify-center">
-            <Briefcase className="text-primary-400" size={24} />
+          <div className="w-14 h-14 rounded-xl bg-primary-100 flex items-center justify-center">
+            <Briefcase className="text-primary-500" size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Post a New Job</h1>
-            <p className="text-slate-400">Describe your project and find the perfect freelancer</p>
+            <h1 className="text-2xl font-bold text-gray-900">Post a New Job</h1>
+            <p className="text-gray-500">Describe your project and find the perfect freelancer</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium mb-2">Job Title *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Job Title *</label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
               placeholder="e.g., Build a portfolio website"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Description *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl min-h-[150px] resize-none"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 min-h-[150px] resize-none"
               placeholder="Describe your project requirements in detail..."
               required
             />
@@ -82,31 +82,30 @@ export default function CreateJob() {
 
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium mb-2">Required Skills</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Required Skills</label>
               <select
                 value={formData.skill_required}
                 onChange={(e) => setFormData({ ...formData, skill_required: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl bg-dark-200 border border-white/10 text-white appearance-none cursor-pointer"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 appearance-none cursor-pointer"
               >
-                <option value="" className="text-slate-400">Select a skill</option>
-                <option value="Web Development" className="text-white">Web Development</option>
-                <option value="Mobile Development" className="text-white">Mobile Development</option>
-                <option value="UI/UX Design" className="text-white">UI/UX Design</option>
-                <option value="Graphic Design" className="text-white">Graphic Design</option>
-                <option value="Content Writing" className="text-white">Content Writing</option>
-                <option value="Data Analysis" className="text-white">Data Analysis</option>
-                <option value="Video Editing" className="text-white">Video Editing</option>
-                <option value="Other" className="text-white">Other</option>
+                <option value="">Select a skill</option>
+                <option value="Web Development">Web Development</option>
+                <option value="Mobile Development">Mobile Development</option>
+                <option value="UI/UX Design">UI/UX Design</option>
+                <option value="Graphic Design">Graphic Design</option>
+                <option value="Content Writing">Content Writing</option>
+                <option value="Data Analysis">Data Analysis</option>
+                <option value="Video Editing">Video Editing</option>
+                <option value="Other">Other</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Budget (₹) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Budget (₹) *</label>
               <input
                 type="number"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10"
                 placeholder="1000"
                 min="100"
                 required
@@ -114,19 +113,19 @@ export default function CreateJob() {
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-primary-500/10 border border-primary-500/20">
-            <h4 className="font-medium text-primary-400 mb-2">Payment Process</h4>
-            <ul className="text-sm text-slate-400 space-y-1">
+          <div className="p-4 rounded-xl bg-primary-50 border border-primary-100">
+            <h4 className="font-medium text-primary-700 mb-2">Payment Process</h4>
+            <ul className="text-sm text-gray-600 space-y-1">
               <li>• Pay 50% advance when freelancer starts working</li>
               <li>• Remaining 50% paid when job is completed</li>
-              <li>• 5% platform fee deducted from final payment</li>
+              <li>• 7% platform fee deducted from final payment</li>
             </ul>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-gradient-to-r from-primary-500 to-purple-500 rounded-xl font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-4 bg-primary-500 text-white rounded-xl font-semibold hover:bg-primary-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading ? 'Creating...' : 'Post Job'}
           </button>

@@ -14,6 +14,7 @@ import JobDetail from './pages/student/JobDetail'
 import CreateJob from './pages/student/CreateJob'
 import Payments from './pages/student/Payments'
 import Chat from './pages/student/Chat'
+import Notifications from './pages/student/Notifications'
 import AdminLayout from './components/layout/AdminLayout'
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminUsers from './pages/admin/Users'
@@ -77,6 +78,7 @@ function App() {
         <Route path="payments" element={<Payments />} />
         <Route path="chat" element={<Chat />} />
         <Route path="chat/:userId" element={<Chat />} />
+        <Route path="notifications" element={<Notifications />} />
       </Route>
       
       <Route path="/admin" element={
