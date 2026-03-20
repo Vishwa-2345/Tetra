@@ -60,6 +60,8 @@ export const jobsAPI = {
   assign: (id: number, job_doer_id: number) => api.put(`/jobs/${id}/assign`, { job_doer_id }),
   getMyJobs: () => api.get('/jobs/my-jobs'),
   getAssignedJobs: () => api.get('/jobs/assigned-jobs'),
+  getByUser: (userId: number) => api.get(`/jobs/user/${userId}`),
+  getPendingFinalPayments: () => api.get('/jobs/pending-final-payments'),
 };
 
 export const paymentsAPI = {

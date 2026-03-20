@@ -104,6 +104,32 @@ async def get_assigned_jobs(
     jobs = result.scalars().all()
     return [JobResponse.model_validate(job) for job in jobs]
 
+@router.get("/user/{user_id}", response_model=List[JobResponse])
+async def get_jobs_by_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    query = select(Job).where(Job.job_giver_id == user_id).order_by(Job.created_at.desc())
+    result = await db.execute(query)
+    jobs = result.scalars().all()
+    return [JobResponse.model_validate(job) for job in jobs]
+
+@router.get("/pending-final-payments", response_model=List[JobResponse])
+async def get_pending_final_payments(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    query = select(Job).where(
+        Job.job_giver_id == current_user.id,
+        Job.advance_paid == True,
+        Job.final_paid == False,
+        Job.status == "in_progress"
+    ).order_by(Job.created_at.desc())
+    result = await db.execute(query)
+    jobs = result.scalars().all()
+    return [JobResponse.model_validate(job) for job in jobs]
+
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(
     job_id: int,

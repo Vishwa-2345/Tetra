@@ -12,7 +12,7 @@ from app.api.auth import get_current_user, get_current_admin
 router = APIRouter(prefix="/users", tags=["Users"])
 
 def calculate_profile_completion(user: User) -> int:
-    fields = [user.profile_photo, user.skills, user.experience, user.portfolio, user.github, user.projects, user.upi_id]
+    fields = [user.profile_photo, user.skills, user.experience, user.portfolio, user.github, user.linkedin, user.projects, user.upi_id]
     completed = sum(1 for f in fields if f)
     return int((completed / len(fields)) * 100)
 

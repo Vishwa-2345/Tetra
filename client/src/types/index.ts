@@ -8,6 +8,7 @@ export interface User {
   experience?: string;
   portfolio?: string;
   github?: string;
+  linkedin?: string;
   projects?: string;
   bio?: string;
   upi_id?: string;

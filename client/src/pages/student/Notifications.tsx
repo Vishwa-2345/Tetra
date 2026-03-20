@@ -17,13 +17,23 @@ const iconMap: Record<string, any> = {
 }
 
 const colorMap: Record<string, string> = {
-  'status_update': 'from-blue-500/20 to-blue-500/5 text-blue-400 border-blue-500/30',
-  'job_assigned': 'from-purple-500/20 to-purple-500/5 text-purple-400 border-purple-500/30',
-  'payment': 'from-green-500/20 to-green-500/5 text-green-400 border-green-500/30',
-  'refund': 'from-amber-500/20 to-amber-500/5 text-amber-400 border-amber-500/30',
-  'review': 'from-pink-500/20 to-pink-500/5 text-pink-400 border-pink-500/30',
-  'message': 'from-cyan-500/20 to-cyan-500/5 text-cyan-400 border-cyan-500/30',
-  'default': 'from-slate-500/20 to-slate-500/5 text-slate-400 border-slate-500/30',
+  'status_update': 'bg-blue-50 text-blue-600 border-blue-200',
+  'job_assigned': 'bg-purple-50 text-purple-600 border-purple-200',
+  'payment': 'bg-green-50 text-green-600 border-green-200',
+  'refund': 'bg-amber-50 text-amber-600 border-amber-200',
+  'review': 'bg-pink-50 text-pink-600 border-pink-200',
+  'message': 'bg-cyan-50 text-cyan-600 border-cyan-200',
+  'default': 'bg-gray-50 text-gray-600 border-gray-200',
+}
+
+const iconColorMap: Record<string, string> = {
+  'status_update': 'text-blue-500',
+  'job_assigned': 'text-purple-500',
+  'payment': 'text-green-500',
+  'refund': 'text-amber-500',
+  'review': 'text-pink-500',
+  'message': 'text-cyan-500',
+  'default': 'text-gray-500',
 }
 
 export default function Notifications() {
@@ -42,19 +52,23 @@ export default function Notifications() {
     return colorMap[type] || colorMap['default']
   }
 
+  const getIconColor = (type: string) => {
+    return iconColorMap[type] || iconColorMap['default']
+  }
+
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold mb-1">Notifications</h1>
-          <p className="text-slate-400 text-sm sm:text-base">
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Notifications</h1>
+          <p className="text-gray-500 text-sm">
             {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
           </p>
         </div>
         {unreadCount > 0 && (
           <button
             onClick={markAllAsRead}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg btn-secondary text-sm"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors"
           >
             <Check size={16} />
             Mark all read
@@ -63,42 +77,41 @@ export default function Notifications() {
       </div>
 
       {notifications.length === 0 ? (
-        <div className="glass rounded-2xl p-12 text-center">
-          <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-            <Bell className="text-slate-500" size={32} />
+        <div className="bg-white rounded-xl p-12 text-center shadow-sm">
+          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+            <Bell className="text-gray-400" size={32} />
           </div>
-          <h3 className="text-lg font-medium mb-2">No notifications yet</h3>
-          <p className="text-slate-500 text-sm">When you get notifications, they'll appear here</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications yet</h3>
+          <p className="text-gray-500 text-sm">When you get notifications, they'll appear here</p>
         </div>
       ) : (
         <div className="space-y-3">
           {notifications.map((notif) => {
             const Icon = getNotificationIcon(notif.type)
             const colorClass = getNotificationColor(notif.type)
+            const iconColor = getIconColor(notif.type)
             
             return (
               <div
                 key={notif.id}
-                className={`p-4 sm:p-5 rounded-xl border transition-all cursor-pointer hover:scale-[1.01] ${
+                className={`p-4 sm:p-5 rounded-xl border transition-all cursor-pointer hover:shadow-sm ${
                   notif.is_read 
-                    ? 'bg-white/5 border-white/10' 
-                    : `bg-gradient-to-br ${colorClass}`
+                    ? 'bg-white border-gray-100' 
+                    : colorClass
                 }`}
                 onClick={() => !notif.is_read && markAsRead(notif.id)}
               >
                 <div className="flex items-start gap-3 sm:gap-4">
-                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    notif.is_read ? 'bg-slate-700/50' : ''
-                  }`}>
-                    <Icon size={20} className={notif.is_read ? 'text-slate-500' : ''} />
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white ${!notif.is_read ? `border ${colorClass}` : 'border-gray-100'}`}>
+                    <Icon size={20} className={notif.is_read ? 'text-gray-400' : iconColor} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h4 className={`font-medium text-sm sm:text-base ${notif.is_read ? 'text-slate-400' : ''}`}>
+                        <h4 className={`font-medium text-sm sm:text-base ${notif.is_read ? 'text-gray-500' : 'text-gray-900'}`}>
                           {notif.title}
                         </h4>
-                        <p className={`text-xs sm:text-sm mt-1 ${notif.is_read ? 'text-slate-500' : 'text-slate-300'}`}>
+                        <p className={`text-xs sm:text-sm mt-1 ${notif.is_read ? 'text-gray-400' : 'text-gray-600'}`}>
                           {notif.message}
                         </p>
                       </div>
@@ -106,7 +119,7 @@ export default function Notifications() {
                         <div className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-2" />
                       )}
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">
+                    <p className="text-xs text-gray-400 mt-2">
                       {format(new Date(notif.created_at), 'MMM d, yyyy • h:mm a')}
                     </p>
                   </div>

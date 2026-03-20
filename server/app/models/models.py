@@ -40,6 +40,7 @@ class User(Base):
     experience = Column(String(500), nullable=True)
     portfolio = Column(String(500), nullable=True)
     github = Column(String(500), nullable=True)
+    linkedin = Column(String(500), nullable=True)
     projects = Column(Text, nullable=True)
     bio = Column(Text, nullable=True)
     

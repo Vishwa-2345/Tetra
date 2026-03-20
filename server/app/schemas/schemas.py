@@ -21,6 +21,7 @@ class UserUpdate(BaseModel):
     experience: Optional[str] = None
     portfolio: Optional[str] = None
     github: Optional[str] = None
+    linkedin: Optional[str] = None
     projects: Optional[str] = None
     bio: Optional[str] = None
     upi_id: Optional[str] = None
@@ -36,6 +37,7 @@ class UserResponse(UserBase):
     experience: Optional[str] = None
     portfolio: Optional[str] = None
     github: Optional[str] = None
+    linkedin: Optional[str] = None
     projects: Optional[str] = None
     bio: Optional[str] = None
     upi_id: Optional[str] = None
